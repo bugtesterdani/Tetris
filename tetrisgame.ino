@@ -6,7 +6,11 @@
 
 #include "Sprite.h"
 
-#define DEBUGGING       TRUE
+#define TRUE            1 == 1
+#define FALSE           1 == 0
+
+#define DEBUGGING       FALSE
+#define SUBDEBUGGING    FALSE
 #define BACKGROUND      TFT_BLACK
 #define TEXTCOLOR_W     TFT_WHITE
 #define TEXTCOLOR_G     TFT_GREEN
@@ -17,6 +21,11 @@
 #define BLOCKRED        0xf800
 #define BLOCKYELLOW     0x1234
 #define BLOCKINVISIBLE  0x0120
+
+#define Box_x_min       38
+#define Box_y_min       36
+#define Box_x_max       128
+#define Box_y_max       74
 
 MAKERphone mp;
 
@@ -38,10 +47,12 @@ Sprite BackgroundImage;
 
 void setup()
 {
-  #if DEBUGGING
+#if DEBUGGING
   Serial.begin(115200);
   Serial.println("Initialized");
-  #endif
+#elif SUBDEBUGGING
+  Serial.begin(115200);
+#endif
   mp.begin();
   mp.display.fillScreen(BACKGROUND);
   osc = new Oscillator(SINE);
@@ -72,6 +83,9 @@ void setup()
 
 void restart()
 {
+#if DEBUGGING
+  Serial.println("Started restart");
+#endif
   for (int i = 0; i < 10; i++)
   {
     for (int j = 0; j < 25; j++)
@@ -79,35 +93,66 @@ void restart()
       GamePlay[i][j] = BLOCKINVISIBLE;
     }
   }
+#if DEBUGGING
+  Serial.println("Restart done");
+#endif
 }
 
 void loop()
 {
+#if DEBUGGING
+  Serial.println("Loop entered");
+#endif
   mp.display.fillScreen(BACKGROUND);
   mp.display.drawIcon(BackgroundImage.Data, 0, 0, BackgroundImage.w, BackgroundImage.h, 1, TFT_TRANSPARENT);
-
+#if DEBUGGING
+  Serial.println("Drawn black");
+#endif
   // Check the rotate Button pressed (Button A)
   if (mp.buttons.pressed(BTN_A))
   {
+#if DEBUGGING
+    Serial.println("Doing rotation");
+#endif
     rotateFallingBlock();
+#if DEBUGGING
+    Serial.println("Rotation done");
+#endif
   }
 
   // Move the actual Block
   moveFallingBlock();
   mp.display.drawIcon(UsageBlock.Data, y, x, UsageBlock.w, UsageBlock.h, BLOCKSIZE, TFT_TRANSPARENT);
-
+#if DEBUGGING
+  Serial.println("Falling Block done");
+#endif
   for (int i = 0; i < 10; i++)
   {
-    for (int j = 0; j < 25; j++)
+    int counter_for_j = 0;
+    for (int j = 24; j >= 0; j--)
     {
+//#if DEBUGGING
+//      Serial.print("GameArray: ");
+//      Serial.println(GamePlay[i][j]);
+//#endif
       if (GamePlay[i][j] != BLOCKINVISIBLE)
       {
-        uint8_t x1_array = 38 + (i * 2 * BLOCKSIZE);
-        uint8_t y1_array = 36 + (j * 2 * BLOCKSIZE);
-        mp.display.fillRect(x1_array, y1_array, 2 * BLOCKSIZE, 2 * BLOCKSIZE, GamePlay[i][j]);
+        uint8_t x1_array = Box_x_min + ((24 - counter_for_j) * 2 * BLOCKSIZE);
+        uint8_t y1_array = Box_y_min + (i * 2 * BLOCKSIZE);
+#if DEBUGGING
+        Serial.print("Draw: ");
+        Serial.print(x1_array);
+        Serial.print(" x ");
+        Serial.println(y1_array);
+#endif
+        mp.display.fillRect(y1_array, x1_array, 2 * BLOCKSIZE, 2 * BLOCKSIZE, GamePlay[i][j]);
       }
+      counter_for_j++;
     }
   }
+#if DEBUGGING
+  Serial.println("Blocks drawn");
+#endif
   
   mp.update();
 }
@@ -116,14 +161,14 @@ void moveFallingBlock()
 {
   if (mp.buttons.repeat(BTN_LEFT, 1))
   {
-    if ((y - (2 * BLOCKSIZE)) > 36)
+    if ((y - (2 * BLOCKSIZE)) > Box_y_min)
     {
       y -= (2 * BLOCKSIZE);
     }
   }
   else if (mp.buttons.repeat(BTN_RIGHT, 1))
   {
-    if ((y + (2 * BLOCKSIZE) + UsageBlock.w) < 78)
+    if ((y + (2 * BLOCKSIZE) + UsageBlock.w) < Box_y_max)
     {
       y += (2 * BLOCKSIZE);
     }
@@ -136,41 +181,72 @@ void moveFallingBlock()
 
 void MoveDown()
 {
-  if ((x + (2 * BLOCKSIZE) + UsageBlock.w) < 128)
+#if DEBUGGING
+  Serial.println("Move Down");
+#endif
+  if ((x + (2 * BLOCKSIZE) + UsageBlock.h) < Box_x_max)
   {
-    uint8_t startBlock = ((y - 36) / (2 * BLOCKSIZE)) - 1;
-    /* Abort cause error / glitch / ... */
-    if (startBlock > 10)
+    uint8_t startBlockArray_y = ((y - Box_y_min) / (2 * BLOCKSIZE));
+    uint8_t startBlockArray_x = ((x - Box_x_min) / (2 * BLOCKSIZE));
+    if (startBlockArray_y >= 10
+        || startBlockArray_x >= 25)
     {
       mp.display.fillScreen(TFT_GREEN);
+      mp.display.setCursor(6,45,1);
+      mp.display.setTextColor(TFT_BLACK);
+      mp.display.setTextSize(3);
+      mp.display.println(F("GLITCHED"));
+      mp.update();
+#if DEBUGGING
+      Serial.print("EXIT: y: ");
+      Serial.print(startBlockArray_y);
+      Serial.print(" x: ");
+      Serial.println(startBlockArray_x);
+#endif
+      delay(5000);
       exit(0);
     }
     boolean for_success = true;
-    for (int j = 0; j < (UsageBlock.w / 2); j++)
+#if DEBUGGING
+    Serial.println("For loop");
+    Serial.print("BlockArray: x: ");
+    Serial.print(startBlockArray_x);
+    Serial.print(" y: ");
+    Serial.println(startBlockArray_y);
+#endif
+    for (int i = 0; i < (UsageBlock.w / 2); i++)
     {
-      uint8_t maxindex = 0;
-      for (int i = 24; i >= 0; i--)
+      for (int j = 0; j < (24 / (UsageBlock.w * 2)); j++)
       {
-        if (GamePlay[startBlock][i] != BLOCKINVISIBLE)
+#if DEBUGGING
+        Serial.print("Checking: ");
+        Serial.println((UsageBlock.w * 2) * j);
+#endif
+        if (UsageBlock.Data[((UsageBlock.w * 2) * j)] != BLOCKINVISIBLE)
         {
-          maxindex = i;
-          break;
+          uint8_t checkArray_x = startBlockArray_x + j + 1;
+          uint8_t checkArray_y = startBlockArray_y + i + 1;
+          if (checkArray_x >= 25)
+          {
+            checkArray_x = 24;
+          }
+          if (checkArray_y >= 10)
+          {
+            checkArray_y = 9;
+          }
+          if (GamePlay[checkArray_y][checkArray_x] != BLOCKINVISIBLE)
+          {
+#if DEBUGGING
+            Serial.println("Found Block");
+#endif
+            for_success = false;
+            break;
+          }
         }
       }
-      uint8_t x_min = 128 - (maxindex * 2 * BLOCKSIZE);
-      uint8_t x_maxBlock = 0;
-      for (int i = 0; i < (UsageBlock.h / 2); i++)
+      if (!for_success)
       {
-        if (UsageBlock.Data[(24 / (UsageBlock.h / 2)) + (i * 2)] != BLOCKINVISIBLE)
-        {
-          x_maxBlock = UsageBlock.h - i;
-          break;
-        }
-      }
-      x_maxBlock *= (2 * BLOCKSIZE);
-      if ((x + x_maxBlock) > x_min)
-      {
-        for_success = false;
+        break;
       }
     }
     if (for_success)
@@ -179,33 +255,84 @@ void MoveDown()
       return;
     }
   }
+#if DEBUGGING
+  Serial.println("SB");
+#endif
   SaveBlock();
+#if DEBUGGING
+  Serial.println("CR");
+#endif
   CheckRows();
+#if DEBUGGING
+  Serial.println("NB");
+#endif
   NewBlock();
 }
 
 void SaveBlock()
 {
-  uint8_t x1_array = ((x - 38) / (2 * BLOCKSIZE)) - 1;
-  uint8_t y1_array = ((y - 36) / (2 * BLOCKSIZE)) - 1;
+  uint8_t y1_array = ((y - Box_y_min) / (2 * BLOCKSIZE));
+  uint8_t x1_array = ((x - Box_x_min) / (2 * BLOCKSIZE));
+#if SUBDEBUGGING or DEBUGGING
+  bool done = false;
+#endif
+#if DEBUGGING
+  Serial.print("ARRAY: x: ");
+  Serial.print(x1_array);
+  Serial.print(" y: ");
+  Serial.println(y1_array);
+#endif
   for (int i = 0; i < (UsageBlock.h / 2); i++)
   {
     for (int j = 0; j < (UsageBlock.w / 2); j++)
     {
-      if (UsageBlock.Data[((i * UsageBlock.w) + (j * 2))] != BLOCKINVISIBLE)
+#if DEBUGGING
+      Serial.print(i);
+      Serial.println(j);
+#endif
+      if (UsageBlock.Data[(((24 / (UsageBlock.h / 2)) * i) + (j * 2))] != BLOCKINVISIBLE)
       {
-        GamePlay[(y1_array + j)][(x1_array + i)] = UsageBlock.Data[((i * UsageBlock.w) + (j * 2))];
+#if DEBUGGING or SUBDEBUGGING
+        Serial.print("ADDED ");
+        Serial.print(i);
+        Serial.print(" ");
+        Serial.print(j);
+        Serial.print(" ");
+        Serial.println(UsageBlock.Data[(((24 / (UsageBlock.h / 2)) * i) + (j * 2))]);
+        done = true;
+#endif
+        GamePlay[(y1_array + j)][(x1_array + i)] = UsageBlock.Data[(((24 / (UsageBlock.h / 2)) * i) + (j * 2))];
       }
+#if DEBUGGING
+      else
+      {
+        Serial.println((((24 / (UsageBlock.h / 2)) * i) + (j * 2)));
+      }
+#endif
     }
   }
+#if DEBUGGING
+  if (!done)
+  {
+    Serial.println("NOTHING ENTERED");
+  }
+#endif
 }
 
 void CheckRows()
 {
-  for (int i = 24; i >= 0; i--)
+  for (int i = 0; i < 25; i++)
   {
     for (int j = 0; j < 10; j++)
     {
+#if SUBDEBUGGING
+      Serial.print("GP ");
+      Serial.print(i);
+      Serial.print(" ");
+      Serial.print(j);
+      Serial.print(" ");
+      Serial.println(GamePlay[j][i]);
+#endif
       if (GamePlay[j][i] == BLOCKINVISIBLE)
       {
         break;
@@ -213,11 +340,15 @@ void CheckRows()
       
       if (j == 9)
       {
+#if SUBDEBUGGING
+        Serial.print("DELETELINE ");
+        Serial.println(i);
+#endif
         for (int k = 0; k < 10; k++)
         {
-          for (int l = i; l < 24; l++)
+          for (int l = i; l > 0; l--)
           {
-            GamePlay[k][l] = GamePlay[k][l + 1];
+            GamePlay[k][l] = GamePlay[k][l - 1];
           }
         }
       }
@@ -227,7 +358,8 @@ void CheckRows()
 
 void NewBlock()
 {
-  switch(random(1, 5))
+  uint8_t rndnum = random(1, 5);
+  switch(rndnum)
   {
     case 1:
       UsageBlock = Block1_1;
@@ -244,8 +376,16 @@ void NewBlock()
     default:
       break;
   }
-  y = (36 + 21 - (2 * BLOCKSIZE));
-  x = 38;
+  y = (Box_y_min + 21 - (2 * BLOCKSIZE));
+  x = Box_x_min;
+#if DEBUGGING
+  Serial.print("RNDNUM : ");
+  Serial.print(rndnum);
+  Serial.print(" Coordinates NB: x: ");
+  Serial.print(x);
+  Serial.print(" y: ");
+  Serial.println(y);
+#endif
 }
 
 void rotateFallingBlock()
@@ -300,7 +440,9 @@ void startAnimation()
   mp.display.drawIcon(UsageBlock.Data, y, x, UsageBlock.w, UsageBlock.h, BLOCKSIZE, TFT_TRANSPARENT);
   while (!mp.update());
   delay(1000);
+#if DEBUGGING
   Serial.println("Done displaying 1");
+#endif
 }
 
 void initSprites()
