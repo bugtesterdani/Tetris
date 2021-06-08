@@ -37,13 +37,16 @@ MAKERphone mp;
 Oscillator *osc;
 const char *highscoresPath = "/Tetris/highscores.sav";
 const char *folderPath = "/Tetris";
-const JsonArray *highscores;
+uint16_t HighScores[4];
 
 uint16_t GamePlay[10][25];
 uint8_t x;
 uint8_t y;
 
 uint16_t CounterBlockFalling;
+uint8_t Level;
+uint16_t Highscore;
+uint16_t BlocksLeftLevel;
 
 Sprite UsageBlock;
 Sprite Block1[4];
@@ -66,6 +69,20 @@ void loop()
 #if DEBUGGING
   Serial.println("Loop entered");
 #endif
+  if (mp.buttons.released(BTN_B))
+  {
+    mp.buttons.update();
+    if (PauseGame())
+    {
+
+    }
+    else
+    {
+      ShowMM();
+      ResetVariables();
+    }
+    
+  }
   mp.display.fillScreen(BACKGROUND);
   mp.display.drawIcon(BackgroundImageGame.Data, 0, 0,
     BackgroundImageGame.w, BackgroundImageGame.h, 1, TFT_TRANSPARENT);
@@ -73,6 +90,7 @@ void loop()
   CheckButtonsPressed();
   CheckJoystick();
   FallBlockCounterBased();
+  PrintResults();
 
 #if DEBUGGING
   Serial.println("Loop done");
@@ -131,6 +149,35 @@ void rotateFallingBlock()
 void MoveFallingBlock()
 {
   
+}
+
+boolean PauseGame()
+{
+  while(1)
+  {
+    mp.display.fillScreen(TFT_BLACK);
+    mp.display.drawIcon(BackgroundImageGame.Data, 0, 0,
+      BackgroundImageGame.w, BackgroundImageGame.h, 1, TFT_TRANSPARENT);
+    mp.setTextColor(TEXTCOLOR_W);
+    mp.display.setCursor(0, mp.display.height() / 2 - 30);
+    mp.display.setTextFont(2);
+    mp.display.setTextSize(2);
+    mp.display.printCenter("Paused");
+    mp.display.setCursor(4, 110);
+    mp.display.setTextSize(1);
+		mp.display.printCenter("A: resume         B: quit");
+    mp.update();
+    if (mp.buttons.released(BTN_A))
+    {
+      mp.buttons.update();
+      return true;
+    }
+    if (mp.buttons.released(BTN_B))
+    {
+      mp.buttons.update();
+      return false;
+    }
+  }
 }
 
 
@@ -242,10 +289,6 @@ void Animation()
   while (!mp.update());
   delay(1000);
 
-  mp.display.fillScreen(BACKGROUND);
-  StartMusic(MUSIC_MENU_START);
-  while (!mp.update());
-
   ShowMM();
 }
 
@@ -273,13 +316,13 @@ void StartMusic(uint8_t WHAT_TODO)
 {
   switch (WHAT_TODO)
   {
-    case 0: // Start Menu Music
+    case MUSIC_MENU_START: // Start Menu Music
       StartMusic(MUSIC_STOP);
       break;
-    case 1: // Start Game Music
+    case MUSIC_GAME_START: // Start Game Music
       StartMusic(MUSIC_STOP);
       break;
-    case 2: // Stop Music
+    case MUSIC_STOP: // Stop Music
       break;
     default:  // Do nothing.
       break;
@@ -289,8 +332,40 @@ void StartMusic(uint8_t WHAT_TODO)
 void ShowMM()
 {
   boolean Loop = true;
+
+  StartMusic(MUSIC_MENU_START);
+
+  mp.display.fillScreen(BACKGROUND);
+  mp.display.drawIcon(BackgroundImageMenu.Data, 0, 0,
+    BackgroundImageMenu.w, BackgroundImageMenu.h, 1, TFT_TRANSPARENT);
+  mp.update();
+
   while (Loop)
   {
-    Loop = false;
+    if (StartGame())
+    {
+      Loop = false;
+      StartMusic(MUSIC_GAME_START);
+    }
+    ShowHighscores();
+    if (ExitGame())
+    {
+      return;
+    }
   }
+  StartMusic(MUSIC_GAME_START);
+}
+
+boolean StartGame()
+{
+  return true;
+}
+
+void ShowHighscores()
+{
+}
+
+boolean ExitGame()
+{
+  return false;
 }
