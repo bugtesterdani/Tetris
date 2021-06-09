@@ -8,6 +8,7 @@
 
 #define TRUE            1 == 1
 #define FALSE           1 == 0
+#define SIZEOF(a)       sizeof(a)/sizeof(*a)
 
 #define DEBUGGING       FALSE
 
@@ -33,13 +34,20 @@
 
 #define MaxCounterFalling 10000
 
+#define BLOCK1_START    0
+#define BLOCK1_SIZE     4
+#define BLOCK1_END      3
+
+#define GamePlayArray_X_MAX   25
+#define GamePlayArray_Y_MAX   10
+
 MAKERphone mp;
 Oscillator *osc;
 const char *highscoresPath = "/Tetris/highscores.sav";
 const char *folderPath = "/Tetris";
 uint16_t HighScores[4];
 
-uint16_t GamePlay[10][25];
+uint16_t GamePlay[GamePlayArray_Y_MAX][GamePlayArray_X_MAX];
 uint8_t x;
 uint8_t y;
 
@@ -49,7 +57,7 @@ uint16_t Highscore;
 uint16_t BlocksLeftLevel;
 
 Sprite UsageBlock;
-Sprite Block1[4];
+Sprite Block1[BLOCK1_SIZE];
 Sprite BackgroundImageGame;
 Sprite BackgroundImageMenu;
 uint8_t actualBlockUsed;
@@ -72,17 +80,13 @@ void loop()
   if (mp.buttons.released(BTN_B))
   {
     mp.buttons.update();
-    if (PauseGame())
-    {
-
-    }
-    else
+    if (!PauseGame())
     {
       ShowMM();
       ResetVariables();
     }
-    
   }
+  
   mp.display.fillScreen(BACKGROUND);
   mp.display.drawIcon(BackgroundImageGame.Data, 0, 0,
     BackgroundImageGame.w, BackgroundImageGame.h, 1, TFT_TRANSPARENT);
@@ -90,7 +94,7 @@ void loop()
   CheckButtonsPressed();
   CheckJoystick();
   FallBlockCounterBased();
-  PrintResults();
+//  PrintResults();
 
 #if DEBUGGING
   Serial.println("Loop done");
@@ -143,10 +147,80 @@ void FallBlockCounterBased()
 
 void rotateFallingBlock()
 {
-  
+  if (CounterBlockFalling >= BLOCK1_START && CounterBlockFalling <= BLOCK1_END)
+  {
+    CounterBlockFalling++;
+    if (CounterBlockFalling > BLOCK1_END)
+    {
+      CounterBlockFalling = BLOCK1_START;
+    }
+    Sprite tmpBlock = Block1[CounterBlockFalling];
+
+    if (y + (tmpBlock.w * BLOCKSIZE) > BLOCK_y_MAX_px)
+    {
+      if (CheckBlock(BLOCK_y_MAX_px - (tmpBlock.w * BLOCKSIZE), x, tmpBlock))
+      {
+        y = BLOCK_y_MAX_px - (tmpBlock.w * BLOCKSIZE);
+        UsageBlock = tmpBlock;
+      }
+      else
+      {
+        CounterBlockFalling--;
+        if (CounterBlockFalling < BLOCK1_START)
+        {
+          CounterBlockFalling = BLOCK1_END;
+        }
+      }
+    }
+    else
+    {
+      UsageBlock = tmpBlock;
+    }
+  }
+}
+
+boolean CheckBlock(uint8_t y, uint8_t x, Sprite BlockChecking)
+{
+  int counter = 0;
+  for (int xArray = ((x - BLOCK_x_MIN_px) / BLOCKSIZE); xArray < ((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.h); xArray++)
+  {
+    for (int yArray = ((BLOCK_y_MAX_px - BlockChecking.w) / BLOCKSIZE); yArray < ((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.w); yArray++)
+    {
+      if (GamePlay[yArray][xArray] != BLOCKINVISIBLE)
+      {
+        for (int i = 0; i < BLOCKSIZE; i++)
+        {
+          if (BlockChecking.Data[counter] != BLOCKINVISIBLE)
+          {
+            return false;
+          }
+        }
+      }
+      counter += BLOCKSIZE;
+    }
+  }
+  return true;
 }
 
 void MoveFallingBlock()
+{
+  if (CheckBlock(y, x + BLOCKSIZE, UsageBlock))
+  {
+    x = x + BLOCKSIZE;
+  }
+  else
+  {
+    SaveBlock();
+    NewBlock();
+  }
+}
+
+void SaveBlock()
+{
+  
+}
+
+void NewBlock()
 {
   
 }
@@ -158,7 +232,7 @@ boolean PauseGame()
     mp.display.fillScreen(TFT_BLACK);
     mp.display.drawIcon(BackgroundImageGame.Data, 0, 0,
       BackgroundImageGame.w, BackgroundImageGame.h, 1, TFT_TRANSPARENT);
-    mp.setTextColor(TEXTCOLOR_W);
+    mp.display.setTextColor(TEXTCOLOR_W);
     mp.display.setCursor(0, mp.display.height() / 2 - 30);
     mp.display.setTextFont(2);
     mp.display.setTextSize(2);
