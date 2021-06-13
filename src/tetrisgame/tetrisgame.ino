@@ -10,7 +10,7 @@
 #define FALSE           1 == 0
 #define SIZEOF(a)       sizeof(a)/sizeof(*a)
 
-#define DEBUGGING       FALSE
+#define DEBUGGING       TRUE
 
 #define BACKGROUND      TFT_BLACK
 #define TEXTCOLOR_W     TFT_WHITE
@@ -34,6 +34,8 @@
 
 #define MaxCounterFalling 10000
 
+#define BLOCK_MINNUM    0
+#define BLOCK_MAXNUM    3
 #define BLOCK1_START    0
 #define BLOCK1_SIZE     4
 #define BLOCK1_END      3
@@ -94,7 +96,9 @@ void loop()
   CheckButtonsPressed();
   CheckJoystick();
   FallBlockCounterBased();
+  Serial.println("ALL DONE");
 //  PrintResults();
+  PrintBlocks();
 
 #if DEBUGGING
   Serial.println("Loop done");
@@ -123,11 +127,23 @@ void CheckJoystick()
 {
   if (mp.buttons.repeat(BTN_LEFT, 1))
   {
-    
+    if (CheckBlockWall((y - BLOCKSIZE), UsageBlock) == 2)
+    {
+      if (CheckBlock((y - BLOCKSIZE), x, UsageBlock))
+      {
+        y -= BLOCKSIZE;
+      }
+    }
   }
   else if (mp.buttons.repeat(BTN_RIGHT, 1))
   {
-    
+    if (CheckBlockWall((y + BLOCKSIZE), UsageBlock) == 2)
+    {
+      if (CheckBlock((y + BLOCKSIZE), x, UsageBlock))
+      {
+        y += BLOCKSIZE;
+      }
+    }
   }
   else if (mp.buttons.repeat(BTN_DOWN, 1))
   {
@@ -145,19 +161,33 @@ void FallBlockCounterBased()
   CounterBlockFalling++;
 }
 
-void rotateFallingBlock()
+void rotateFBSub(Sprite Block[], uint8_t BLOCKStart, uint8_t BLOCKEnd)
 {
-  if (CounterBlockFalling >= BLOCK1_START && CounterBlockFalling <= BLOCK1_END)
+  CounterBlockFalling++;
+  if (CounterBlockFalling > BLOCKEnd)
   {
-    CounterBlockFalling++;
-    if (CounterBlockFalling > BLOCK1_END)
-    {
-      CounterBlockFalling = BLOCK1_START;
-    }
-    Sprite tmpBlock = Block1[CounterBlockFalling];
+    CounterBlockFalling = BLOCKStart;
+  }
+  Sprite tmpBlock = Block[CounterBlockFalling - BLOCKStart];
 
-    if (y + (tmpBlock.w * BLOCKSIZE) > BLOCK_y_MAX_px)
-    {
+  switch (CheckBlockWall(y, tmpBlock))
+  {
+    case 0:
+      if (CheckBlock(BLOCK_y_MIN_px, x, tmpBlock))
+      {
+        y = BLOCK_y_MIN_px;
+        UsageBlock = tmpBlock;
+      }
+      else
+      {
+        CounterBlockFalling--;
+        if (CounterBlockFalling < BLOCKStart)
+        {
+          CounterBlockFalling = BLOCKEnd;
+        }
+      }
+      break;
+    case 1:
       if (CheckBlock(BLOCK_y_MAX_px - (tmpBlock.w * BLOCKSIZE), x, tmpBlock))
       {
         y = BLOCK_y_MAX_px - (tmpBlock.w * BLOCKSIZE);
@@ -166,31 +196,64 @@ void rotateFallingBlock()
       else
       {
         CounterBlockFalling--;
-        if (CounterBlockFalling < BLOCK1_START)
+        if (CounterBlockFalling < BLOCKStart)
         {
-          CounterBlockFalling = BLOCK1_END;
+          CounterBlockFalling = BLOCKEnd;
         }
       }
-    }
-    else
-    {
-      UsageBlock = tmpBlock;
-    }
+      break;
+    case 2:
+      if (CheckBlock(y, x, tmpBlock))
+      {
+        UsageBlock = tmpBlock;
+      }
+      else
+      {
+        CounterBlockFalling--;
+        if (CounterBlockFalling < BLOCKStart)
+        {
+          CounterBlockFalling = BLOCKEnd;
+        }
+      }
+      break;
+    default:
+      CounterBlockFalling--;
+      if (CounterBlockFalling < BLOCKStart)
+      {
+        CounterBlockFalling = BLOCKEnd;
+      }
+      break;
+  }
+}
+
+void rotateFallingBlock()
+{
+  if (CounterBlockFalling >= BLOCK1_START && CounterBlockFalling <= BLOCK1_END)
+  {
+    rotateFBSub(Block1, BLOCK1_START, BLOCK1_END);
   }
 }
 
 boolean CheckBlock(uint8_t y, uint8_t x, Sprite BlockChecking)
 {
   int counter = 0;
+  Serial.print("X: ");
+  Serial.print(((x - BLOCK_x_MIN_px) / BLOCKSIZE));
+  Serial.print(" X_m: ");
+  Serial.println(((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.h));
   for (int xArray = ((x - BLOCK_x_MIN_px) / BLOCKSIZE); xArray < ((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.h); xArray++)
   {
+    Serial.print("Y: ");
+    Serial.print(((BLOCK_y_MAX_px - BlockChecking.w) / BLOCKSIZE));
+    Serial.print(" Y_m: ");
+    Serial.println(((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.w));
     for (int yArray = ((BLOCK_y_MAX_px - BlockChecking.w) / BLOCKSIZE); yArray < ((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.w); yArray++)
     {
       if (GamePlay[yArray][xArray] != BLOCKINVISIBLE)
       {
         for (int i = 0; i < BLOCKSIZE; i++)
         {
-          if (BlockChecking.Data[counter] != BLOCKINVISIBLE)
+          if (BlockChecking.Data[counter + i] != BLOCKINVISIBLE)
           {
             return false;
           }
@@ -200,6 +263,22 @@ boolean CheckBlock(uint8_t y, uint8_t x, Sprite BlockChecking)
     }
   }
   return true;
+}
+
+uint8_t CheckBlockWall(uint8_t y, Sprite BlockChecking)
+{
+  if (y < BLOCK_y_MIN_px)
+  {
+    return 0;
+  }
+  else if ((y + (BlockChecking.w * BLOCKSIZE)) >= BLOCK_y_MAX_px)
+  {
+    return 1;
+  }
+  else
+  {
+    return 2;
+  }
 }
 
 void MoveFallingBlock()
@@ -222,7 +301,13 @@ void SaveBlock()
 
 void NewBlock()
 {
-  
+  uint8_t rndnum = random(BLOCK_MINNUM,BLOCK_MAXNUM);
+  if (rndnum >= BLOCK1_START && rndnum <= BLOCK1_END)
+  {
+    UsageBlock = Block1[rndnum - BLOCK1_START];
+  }
+  x = BLOCK_x_MIN_px;
+  y = (((BLOCK_y_MAX_px - BLOCK_y_MIN_px) / 2) + BLOCK_y_MIN_px);
 }
 
 boolean PauseGame()
@@ -252,6 +337,37 @@ boolean PauseGame()
       return false;
     }
   }
+}
+
+void PrintBlocks()
+{
+  Serial.println("PB started");
+  for (int i = 0; i < GamePlayArray_Y_MAX - 1; i++)
+  {
+    for (int j = GamePlayArray_X_MAX - 1; j >= 0; j--)
+    {
+      if (GamePlay[i][j] != BLOCKINVISIBLE)
+      {
+        uint8_t _x = BLOCK_x_MIN_px + (j * BLOCKSIZE);
+        uint8_t _y = BLOCK_y_MIN_px + (i * BLOCKSIZE);
+        mp.display.fillRect(_y, _x, BLOCKSIZE, BLOCKSIZE, GamePlay[i][j]);
+      }
+    }
+  }
+  Serial.println("Part1 done");
+  uint8_t counter = 0;
+  for (int xArray = ((x - BLOCK_x_MIN_px) / BLOCKSIZE); xArray < ((SIZEOF(UsageBlock.Data) / BLOCKSIZE) / UsageBlock.h); xArray++)
+  {
+    for (int yArray = ((BLOCK_y_MAX_px - UsageBlock.w) / BLOCKSIZE); yArray < ((SIZEOF(UsageBlock.Data) / BLOCKSIZE) / UsageBlock.w); yArray++)
+    {
+      if (UsageBlock.Data[counter] != BLOCKINVISIBLE)
+      {
+        mp.display.fillRect(y + (yArray * BLOCKSIZE), x + (xArray * BLOCKSIZE), BLOCKSIZE, BLOCKSIZE, UsageBlock.Data[counter]);
+      }
+      counter += BLOCKSIZE;
+    }
+  }
+  Serial.println("DONE");
 }
 
 
@@ -432,6 +548,7 @@ void ShowMM()
 
 boolean StartGame()
 {
+  NewBlock();
   return true;
 }
 
