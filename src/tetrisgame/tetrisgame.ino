@@ -236,33 +236,57 @@ void rotateFallingBlock()
 
 boolean CheckBlock(uint8_t y, uint8_t x, Sprite BlockChecking)
 {
-  int counter = 0;
-  Serial.print("X: ");
-  Serial.print(((x - BLOCK_x_MIN_px) / BLOCKSIZE));
-  Serial.print(" X_m: ");
-  Serial.println(((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.h));
-  for (int xArray = ((x - BLOCK_x_MIN_px) / BLOCKSIZE); xArray < ((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.h); xArray++)
+  uint8_t positions[2] = GetActualPosition(x, y);
+  for (int i = 0; i < (BlockChecking.h / BLOCKSIZE); i++)
   {
-    Serial.print("Y: ");
-    Serial.print(((BLOCK_y_MAX_px - BlockChecking.w) / BLOCKSIZE));
-    Serial.print(" Y_m: ");
-    Serial.println(((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.w));
-    for (int yArray = ((BLOCK_y_MAX_px - BlockChecking.w) / BLOCKSIZE); yArray < ((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.w); yArray++)
+    for (int j = 0; j < (BlockChecking.w / BLOCKSIZE); j++)
     {
-      if (GamePlay[yArray][xArray] != BLOCKINVISIBLE)
+      if (GamePlay[positions[0] + i][positions[1] + j] != BLOCKINVISIBLE)
       {
-        for (int i = 0; i < BLOCKSIZE; i++)
+        if (UsageBlock.Data[((i * BLOCKSIZE) * UsageBlock.w) + (j * BLOCKSIZE)] != BLOCKINVISIBLE)
         {
-          if (BlockChecking.Data[counter + i] != BLOCKINVISIBLE)
-          {
-            return false;
-          }
+          return false;
         }
       }
-      counter += BLOCKSIZE;
     }
   }
   return true;
+
+  // int counter = 0;
+  // Serial.print("X: ");
+  // Serial.print(((x - BLOCK_x_MIN_px) / BLOCKSIZE));
+  // Serial.print(" X_m: ");
+  // Serial.println(((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.h));
+  // for (int xArray = ((x - BLOCK_x_MIN_px) / BLOCKSIZE); xArray < ((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.h); xArray++)
+  // {
+  //   Serial.print("Y: ");
+  //   Serial.print(((BLOCK_y_MAX_px - BlockChecking.w) / BLOCKSIZE));
+  //   Serial.print(" Y_m: ");
+  //   Serial.println(((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.w));
+  //   for (int yArray = ((BLOCK_y_MAX_px - BlockChecking.w) / BLOCKSIZE); yArray < ((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.w); yArray++)
+  //   {
+  //     if (GamePlay[yArray][xArray] != BLOCKINVISIBLE)
+  //     {
+  //       for (int i = 0; i < BLOCKSIZE; i++)
+  //       {
+  //         if (BlockChecking.Data[counter + i] != BLOCKINVISIBLE)
+  //         {
+  //           return false;
+  //         }
+  //       }
+  //     }
+  //     counter += BLOCKSIZE;
+  //   }
+  // }
+  // return true;
+}
+
+uint8_t[] GetActualPosition(uint8_t _x, uint8_t _y)
+{
+  uint8_t positions[2];
+  positions[0] = ((_x - BLOCK_x_MIN_px) / BLOCKSIZE);
+  positions[1] = ((_y - BLOCK_y_MIN_px) / BLOCKSIZE);
+  return positions;
 }
 
 uint8_t CheckBlockWall(uint8_t y, Sprite BlockChecking)
