@@ -234,14 +234,15 @@ void rotateFallingBlock()
   }
 }
 
-boolean CheckBlock(uint8_t y, uint8_t x, Sprite BlockChecking)
+boolean CheckBlock(uint8_t _y, uint8_t _x, Sprite BlockChecking)
 {
-  uint8_t positions[2] = GetActualPosition(x, y);
+  uint8_t _x_ = ((_x - BLOCK_x_MIN_px) / BLOCKSIZE);
+  uint8_t _y_ = ((_y - BLOCK_y_MIN_px) / BLOCKSIZE);
   for (int i = 0; i < (BlockChecking.h / BLOCKSIZE); i++)
   {
     for (int j = 0; j < (BlockChecking.w / BLOCKSIZE); j++)
     {
-      if (GamePlay[positions[0] + i][positions[1] + j] != BLOCKINVISIBLE)
+      if (GamePlay[_x_ + i][_y_ + j] != BLOCKINVISIBLE)
       {
         if (UsageBlock.Data[((i * BLOCKSIZE) * UsageBlock.w) + (j * BLOCKSIZE)] != BLOCKINVISIBLE)
         {
@@ -251,51 +252,15 @@ boolean CheckBlock(uint8_t y, uint8_t x, Sprite BlockChecking)
     }
   }
   return true;
-
-  // int counter = 0;
-  // Serial.print("X: ");
-  // Serial.print(((x - BLOCK_x_MIN_px) / BLOCKSIZE));
-  // Serial.print(" X_m: ");
-  // Serial.println(((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.h));
-  // for (int xArray = ((x - BLOCK_x_MIN_px) / BLOCKSIZE); xArray < ((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.h); xArray++)
-  // {
-  //   Serial.print("Y: ");
-  //   Serial.print(((BLOCK_y_MAX_px - BlockChecking.w) / BLOCKSIZE));
-  //   Serial.print(" Y_m: ");
-  //   Serial.println(((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.w));
-  //   for (int yArray = ((BLOCK_y_MAX_px - BlockChecking.w) / BLOCKSIZE); yArray < ((SIZEOF(BlockChecking.Data) / BLOCKSIZE) / BlockChecking.w); yArray++)
-  //   {
-  //     if (GamePlay[yArray][xArray] != BLOCKINVISIBLE)
-  //     {
-  //       for (int i = 0; i < BLOCKSIZE; i++)
-  //       {
-  //         if (BlockChecking.Data[counter + i] != BLOCKINVISIBLE)
-  //         {
-  //           return false;
-  //         }
-  //       }
-  //     }
-  //     counter += BLOCKSIZE;
-  //   }
-  // }
-  // return true;
 }
 
-uint8_t[] GetActualPosition(uint8_t _x, uint8_t _y)
+uint8_t CheckBlockWall(uint8_t _y, Sprite BlockChecking)
 {
-  uint8_t positions[2];
-  positions[0] = ((_x - BLOCK_x_MIN_px) / BLOCKSIZE);
-  positions[1] = ((_y - BLOCK_y_MIN_px) / BLOCKSIZE);
-  return positions;
-}
-
-uint8_t CheckBlockWall(uint8_t y, Sprite BlockChecking)
-{
-  if (y < BLOCK_y_MIN_px)
+  if (_y < BLOCK_y_MIN_px)
   {
     return 0;
   }
-  else if ((y + (BlockChecking.w * BLOCKSIZE)) >= BLOCK_y_MAX_px)
+  else if ((_y + (BlockChecking.w * BLOCKSIZE)) >= BLOCK_y_MAX_px)
   {
     return 1;
   }
