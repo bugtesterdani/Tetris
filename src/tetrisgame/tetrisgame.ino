@@ -22,6 +22,12 @@
     *      Actual restart the Game:                        *
     *         - Pressing A (One Time when Pausing)         *
     ********************************************************/
+	
+// Changes:
+// 	- 2021-11-01: DG
+// 		- Tetris Background Music added
+//		- New Blocks added (inserted all 7 Blocks of Tetris)
+//			(https://www.russlandjournal.de/wp-content/uploads/2014/07/tetris-steine.jpg)
 
 #include <Arduino.h>
 #include "MAKERphone.h"
@@ -40,7 +46,12 @@
 
 #define BLOCKSIZE       2
 #define BLOCKRED        0xf800
-#define BLOCKYELLOW     0x1234
+#define BLOCKYELLOW     0xffe0
+#define BLOCKBLUE       0x001f
+#define BLOCKGREEN      0x07e0
+#define BLOCKORANGE     0xfbc0
+#define BLOCKPURPLE     0xf81f
+#define BLOCKLIGHTBLUE  0x079f
 #define BLOCKINVISIBLE  0x0120
 
 #define BLOCK_x_MIN_px  28
@@ -62,10 +73,35 @@
 #define CounterSteps          2
 
 #define BLOCK_MINNUM    0
-#define BLOCK_MAXNUM    3
+#define BLOCK_MAXNUM    18
+
 #define BLOCK1_START    0
 #define BLOCK1_SIZE     4
 #define BLOCK1_END      3
+
+#define BLOCK2_START    4
+#define BLOCK2_SIZE     4
+#define BLOCK2_END      7
+
+#define BLOCK3_START    8
+#define BLOCK3_SIZE     2
+#define BLOCK3_END      9
+
+#define BLOCK4_START    10
+#define BLOCK4_SIZE     1
+#define BLOCK4_END      10
+
+#define BLOCK5_START    11
+#define BLOCK5_SIZE     2
+#define BLOCK5_END      12
+
+#define BLOCK6_START    13
+#define BLOCK6_SIZE     2
+#define BLOCK6_END      14
+
+#define BLOCK7_START    15
+#define BLOCK7_SIZE     4
+#define BLOCK7_END      18
 
 #define GamePlayArray_X_MAX   25
 #define GamePlayArray_Y_MAX   10
@@ -73,6 +109,7 @@
 MAKERphone mp;
 Oscillator *osc;
 
+const char *bgMusicPath = "/Tetris/Tetris_Theme.wav";
 const char *highscoresPath = "/Tetris/highscores.sav";
 const char *folderPath = "/Tetris";
 uint16_t HighScores[4];
@@ -92,11 +129,19 @@ bool PauseGame_State;
 Sprite UsageBlock;
 Sprite NextBlock;
 Sprite Block1[BLOCK1_SIZE];
+Sprite Block2[BLOCK2_SIZE];
+Sprite Block3[BLOCK3_SIZE];
+Sprite Block4[BLOCK4_SIZE];
+Sprite Block5[BLOCK5_SIZE];
+Sprite Block6[BLOCK6_SIZE];
+Sprite Block7[BLOCK7_SIZE];
 Sprite BackgroundImageGame;
 Sprite BackgroundImageMenu;
 uint8_t actualBlockUsed;
 uint8_t nextBlock;
 uint8_t LinesRemoved;
+
+MPTrack *bgMusic;
 
 void setup()
 {
@@ -110,6 +155,14 @@ void loop()
   {
     mp.buttons.update();
     PauseGame_State ^= true;
+    if (PauseGame_State)
+    {
+      bgMusic->pause();
+    }
+    else
+    {
+      bgMusic->resume();
+    }
   }
   if (PauseGame_State)
   {
@@ -153,6 +206,12 @@ void MPInitialize()
   mp.begin();
   mp.display.fillScreen(BACKGROUND);
   InitializeSprite();
+  bgMusic = new MPTrack(bgMusicPath);
+  bgMusic->setVolume(40);
+  addTrack(bgMusic);
+  bgMusic->setRepeat(1);
+  bgMusic->rewind();
+  bgMusic->play();
   osc = new Oscillator(SINE);
   addOscillator(osc);
   osc->setVolume(60);
@@ -175,6 +234,63 @@ void InitializeSprite()
   Block1[3].Data = image_data_Block1_4;
   Block1[3].w = 4;
   Block1[3].h = 6;
+
+  // Yellow Blocks
+  Block2[0].Data = image_data_Block2_1;
+  Block2[0].w = 6;
+  Block2[0].h = 4;
+  Block2[1].Data = image_data_Block2_2;
+  Block2[1].w = 4;
+  Block2[1].h = 6;
+  Block2[2].Data = image_data_Block2_3;
+  Block2[2].w = 6;
+  Block2[2].h = 4;
+  Block2[3].Data = image_data_Block2_4;
+  Block2[3].w = 4;
+  Block2[3].h = 6;
+
+  // Blue Blocks
+  Block3[0].Data = image_data_Block3_1;
+  Block3[0].w = 2;
+  Block3[0].h = 8;
+  Block3[1].Data = image_data_Block3_2;
+  Block3[1].w = 2;
+  Block3[1].h = 8;
+  
+  // Green Blocks
+  Block4[0].Data = image_data_Block4_1;
+  Block4[0].w = 4;
+  Block4[0].h = 4;
+  
+  // Orange Blocks
+  Block5[0].Data = image_data_Block5_1;
+  Block5[0].w = 6;
+  Block5[0].h = 4;
+  Block5[1].Data = image_data_Block5_2;
+  Block5[1].w = 4;
+  Block5[1].h = 6;
+  
+  // Purple Blocks
+  Block6[0].Data = image_data_Block6_1;
+  Block6[0].w = 6;
+  Block6[0].h = 4;
+  Block6[1].Data = image_data_Block6_2;
+  Block6[1].w = 4;
+  Block6[1].h = 6;
+  
+  // Light Blue Blocks
+  Block7[0].Data = image_data_Block7_1;
+  Block7[0].w = 6;
+  Block7[0].h = 4;
+  Block7[1].Data = image_data_Block7_2;
+  Block7[1].w = 4;
+  Block7[1].h = 6;
+  Block7[2].Data = image_data_Block7_3;
+  Block7[2].w = 6;
+  Block7[2].h = 4;
+  Block7[3].Data = image_data_Block7_4;
+  Block7[3].w = 4;
+  Block7[3].h = 6;
 
   BackgroundImageGame.Data = image_data_Tetris_Background;
   BackgroundImageGame.w = 160;
@@ -265,9 +381,57 @@ void NewBlock()
   {
     UsageBlock = Block1[actualBlockUsed - BLOCK1_START];
   }
+  else if (actualBlockUsed >= BLOCK2_START && actualBlockUsed <= BLOCK2_END)
+  {
+    UsageBlock = Block2[actualBlockUsed - BLOCK2_START];
+  }
+  else if (actualBlockUsed >= BLOCK3_START && actualBlockUsed <= BLOCK3_END)
+  {
+    UsageBlock = Block3[actualBlockUsed - BLOCK3_START];
+  }
+  else if (actualBlockUsed >= BLOCK4_START && actualBlockUsed <= BLOCK4_END)
+  {
+    UsageBlock = Block4[actualBlockUsed - BLOCK4_START];
+  }
+  else if (actualBlockUsed >= BLOCK5_START && actualBlockUsed <= BLOCK5_END)
+  {
+    UsageBlock = Block5[actualBlockUsed - BLOCK5_START];
+  }
+  else if (actualBlockUsed >= BLOCK6_START && actualBlockUsed <= BLOCK6_END)
+  {
+    UsageBlock = Block6[actualBlockUsed - BLOCK6_START];
+  }
+  else if (actualBlockUsed >= BLOCK7_START && actualBlockUsed <= BLOCK7_END)
+  {
+    UsageBlock = Block7[actualBlockUsed - BLOCK7_START];
+  }
   if (nextBlock >= BLOCK1_START && nextBlock <= BLOCK1_END)
   {
     NextBlock = Block1[nextBlock - BLOCK1_START];
+  }
+  else if (nextBlock >= BLOCK2_START && nextBlock <= BLOCK2_END)
+  {
+    NextBlock = Block2[nextBlock - BLOCK2_START];
+  }
+  else if (nextBlock >= BLOCK3_START && nextBlock <= BLOCK3_END)
+  {
+    NextBlock = Block3[nextBlock - BLOCK3_START];
+  }
+  else if (nextBlock >= BLOCK4_START && nextBlock <= BLOCK4_END)
+  {
+    NextBlock = Block4[nextBlock - BLOCK4_START];
+  }
+  else if (nextBlock >= BLOCK5_START && nextBlock <= BLOCK5_END)
+  {
+    NextBlock = Block5[nextBlock - BLOCK5_START];
+  }
+  else if (nextBlock >= BLOCK6_START && nextBlock <= BLOCK6_END)
+  {
+    NextBlock = Block6[nextBlock - BLOCK6_START];
+  }
+  else if (nextBlock >= BLOCK7_START && nextBlock <= BLOCK7_END)
+  {
+    NextBlock = Block7[nextBlock - BLOCK7_START];
   }
   x = BLOCK_x_MIN_px;
   y = (((BLOCK_y_MAX_px - BLOCK_y_MIN_px) / 2) + BLOCK_y_MIN_px);
@@ -291,6 +455,30 @@ void rotateFallingBlock()
   if (actualBlockUsed >= BLOCK1_START && actualBlockUsed <= BLOCK1_END)
   {
     rotateFallingBlock(Block1, BLOCK1_START, BLOCK1_END);
+  }
+  else if (actualBlockUsed >= BLOCK2_START && actualBlockUsed <= BLOCK2_END)
+  {
+    rotateFallingBlock(Block2, BLOCK2_START, BLOCK2_END);
+  }
+  else if (actualBlockUsed >= BLOCK3_START && actualBlockUsed <= BLOCK3_END)
+  {
+    rotateFallingBlock(Block3, BLOCK3_START, BLOCK3_END);
+  }
+  else if (actualBlockUsed >= BLOCK4_START && actualBlockUsed <= BLOCK4_END)
+  {
+    rotateFallingBlock(Block4, BLOCK4_START, BLOCK4_END);
+  }
+  else if (actualBlockUsed >= BLOCK5_START && actualBlockUsed <= BLOCK5_END)
+  {
+    rotateFallingBlock(Block5, BLOCK5_START, BLOCK5_END);
+  }
+  else if (actualBlockUsed >= BLOCK6_START && actualBlockUsed <= BLOCK6_END)
+  {
+    rotateFallingBlock(Block6, BLOCK6_START, BLOCK6_END);
+  }
+  else if (actualBlockUsed >= BLOCK7_START && actualBlockUsed <= BLOCK7_END)
+  {
+    rotateFallingBlock(Block7, BLOCK7_START, BLOCK7_END);
   }
 }
 
